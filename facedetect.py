@@ -5,11 +5,11 @@ import streamlit as st
 from PIL import Image
 
 # Load the model
-json_file = open("facialemotionmodel.json", "r")
+json_file = open("faceEmotionModel.json", "r")
 model_json = json_file.read()
 json_file.close()
 model = model_from_json(model_json)
-model.load_weights("facialemotionmodel.h5")
+model.load_weights("faceEmotionModel.keras")
 
 # Load the Haar cascade for face detection
 haar_file = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
