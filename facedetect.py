@@ -3,7 +3,7 @@ import cv2
 import numpy as np
 from keras.models import model_from_json
 from keras.preprocessing.image import img_to_array
-from streamlit_webrtc import webrtc_streamer, VideoTransformerBase, RTCConfiguration
+from streamlit_webrtc import WebRtcMode,webrtc_streamer, VideoTransformerBase, RTCConfiguration
 
 # Page config
 st.set_page_config(page_title="Emotion Detection", layout="wide")
