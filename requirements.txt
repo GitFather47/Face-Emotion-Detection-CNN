@@ -5,5 +5,5 @@ pandas
 numpy
 streamlit_webrtc
 tqdm
-opencv-contrib-python
+opencv-python-headless
 scikit-learn
