@@ -14,7 +14,7 @@ def load_model():
     model_json = json_file.read()
     json_file.close()
     model = model_from_json(model_json)
-    model.load_weights('faceEmotionModel.keras')  # Assuming your model weights are in faceEmotionModel.h5
+    model.load_weights('faceEmotionModel.h5')  # Assuming your model weights are in faceEmotionModel.h5
     return model
 
 # Load face classifier (do this only once)
@@ -95,8 +95,7 @@ def main():
             if st.button("Stop Camera"):
                 break
         
-        cap.release()
-        cv2.destroyAllWindows()
+        cap.release()  # Stop accessing the camera
 
 if __name__ == "__main__":
     main()
