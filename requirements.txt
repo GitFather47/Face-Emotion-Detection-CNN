@@ -1,0 +1,9 @@
+streamlit
+tensorflow
+keras
+pandas
+numpy
+streamlit_webrtc
+tqdm
+opencv-contrib-python
+scikit-learn
