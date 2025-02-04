@@ -3,7 +3,7 @@ import cv2
 import numpy as np
 from keras.models import model_from_json
 from keras.preprocessing.image import img_to_array
-from streamlit_webrtc import WebRtcMode,webrtc_streamer, VideoTransformerBase, RTCConfiguration
+from streamlit_webrtc import webrtc_streamer, VideoTransformerBase, RTCConfiguration, WebRtcMode
 
 # Page config
 st.set_page_config(page_title="Emotion Detection", layout="wide")
@@ -11,11 +11,11 @@ st.set_page_config(page_title="Emotion Detection", layout="wide")
 # Load model (do this only once)
 @st.cache_resource
 def load_model():
-    json_file = open('faceEmotionModel.json', 'r')
+    json_file = open('facialemotionmodel.json', 'r')
     model_json = json_file.read()
     json_file.close()
     model = model_from_json(model_json)
-    model.load_weights('faceEmotionModel.keras')
+    model.load_weights('facialemotionmodel.h5')
     return model
 
 # Load face classifier (do this only once)
@@ -26,12 +26,17 @@ def load_face_classifier():
 # Initialize
 model = load_model()
 face_classifier = load_face_classifier()
-emotions = ['Angry', 'Disgust', 'Fear', 'Happy', 'Neutral', 'Sad', 'Surprise']
+labels = {0: 'Angry', 1: 'Disgust', 2: 'Fear', 3: 'Happy', 4: 'Neutral', 5: 'Sad', 6: 'Surprise'}
 
 # RTC Configuration for WebRTC
 rtc_configuration = RTCConfiguration(
     {"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]}
 )
+
+def extract_features(image):
+    feature = np.array(image)
+    feature = feature.reshape(1, 48, 48, 1)
+    return feature / 255.0
 
 class EmotionProcessor(VideoTransformerBase):
     def transform(self, frame):
@@ -45,49 +50,17 @@ class EmotionProcessor(VideoTransformerBase):
             # Draw rectangle around face
             cv2.rectangle(img, (x, y), (x+w, y+h), (255, 0, 0), 2)
             
-            # Extract and preprocess face region
-            roi_gray = gray[y:y+h, x:x+w]
-            roi_gray = cv2.resize(roi_gray, (48, 48))
-            roi = roi_gray.astype('float')/255.0
-            roi = img_to_array(roi)
-            roi = np.expand_dims(roi, axis=0)
+            # Extract face region and preprocess
+            face_img = gray[y:y+h, x:x+w]
+            face_img = cv2.resize(face_img, (48, 48))
+            img_features = extract_features(face_img)
             
             # Make prediction
-            predictions = model.predict(roi)[0]
+            pred = model.predict(img_features)
+            prediction_label = labels[pred.argmax()]
             
-            # Display emotion percentages on right side
-            bar_width = 150
-            for i, (emotion, pred) in enumerate(zip(emotions, predictions)):
-                # Calculate percentage
-                percentage = int(pred * 100)
-                
-                # Draw text and bar
-                text_x = img.shape[1] - bar_width - 10
-                text_y = 30 + i * 30
-                
-                # Draw emotion label
-                cv2.putText(img, f'{emotion}:', (text_x - 80, text_y), 
-                           cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
-                
-                # Draw percentage bar
-                bar_x = text_x
-                bar_y = text_y - 10
-                filled_width = int((percentage * bar_width) / 100)
-                
-                # Draw background bar
-                cv2.rectangle(img, (bar_x, bar_y), 
-                             (bar_x + bar_width, bar_y + 10), 
-                             (120, 120, 120), -1)
-                
-                # Draw filled bar
-                cv2.rectangle(img, (bar_x, bar_y), 
-                             (bar_x + filled_width, bar_y + 10), 
-                             (65, 105, 225), -1)
-                
-                # Draw percentage text
-                cv2.putText(img, f'{percentage}%', 
-                           (bar_x + bar_width + 10, text_y), 
-                           cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+            # Display the prediction
+            cv2.putText(img, prediction_label, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 0, 255), 2)
         
         return img
 
@@ -100,7 +73,7 @@ def main():
     ### Instructions:
     1. Click the 'Start' button below to start the camera
     2. Allow camera access when prompted
-    3. The app will detect faces and show emotion percentages
+    3. The app will detect faces and show emotion predictions
     4. Works with both webcam and mobile front camera
     """)
     
