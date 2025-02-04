@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 from keras.models import model_from_json
 from streamlit_webrtc import webrtc_streamer, VideoTransformerBase
+import streamlit as st
 
 # Load the model
 json_file = open("faceEmotionModel.json", "r")
