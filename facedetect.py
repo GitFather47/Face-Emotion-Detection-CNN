@@ -1,8 +1,6 @@
 import cv2
-import numpy as np
 from keras.models import model_from_json
-from streamlit_webrtc import webrtc_streamer, VideoTransformerBase
-import streamlit as st
+import numpy as np
 
 # Load the model
 json_file = open("faceEmotionModel.json", "r")
@@ -11,61 +9,52 @@ json_file.close()
 model = model_from_json(model_json)
 model.load_weights("faceEmotionModel.keras")
 
-# Load the Haar cascade for face detection
+# Load the face detection model
 haar_file = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
 face_cascade = cv2.CascadeClassifier(haar_file)
 
-# Emotion labels
-labels = {0: 'angry', 1: 'disgust', 2: 'fear', 3: 'happy', 4: 'neutral', 5: 'sad', 6: 'surprise'}
-
-# Function to extract features from the image
+# Function to preprocess the image
 def extract_features(image):
     feature = np.array(image)
     feature = feature.reshape(1, 48, 48, 1)
     return feature / 255.0
 
-# Custom VideoTransformer class for processing video frames
-class EmotionDetectionTransformer(VideoTransformerBase):
-    def transform(self, frame):
-        # Convert the frame to a numpy array
-        img = frame.to_ndarray(format="bgr24")
+# Webcam feed
+webcam = cv2.VideoCapture(0)
+labels = {0: 'angry', 1: 'disgust', 2: 'fear', 3: 'happy', 4: 'neutral', 5: 'sad', 6: 'surprise'}
+colors = {
+    'angry': (0, 0, 255), 'disgust': (0, 255, 255), 'fear': (255, 0, 255), 
+    'happy': (0, 255, 0), 'neutral': (255, 255, 255), 'sad': (255, 0, 0), 'surprise': (255, 255, 0)
+}
 
-        # Convert the frame to grayscale
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-
-        # Detect faces in the frame
-        faces = face_cascade.detectMultiScale(gray, 1.3, 5)
-
-        # Process each face detected
+# Main loop for video capture and emotion detection
+while True:
+    i, im = webcam.read()
+    gray = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)
+    faces = face_cascade.detectMultiScale(im, 1.3, 5)
+    try:
         for (p, q, r, s) in faces:
-            # Extract the face region
-            face_image = gray[q:q + s, p:p + r]
-            face_image = cv2.resize(face_image, (48, 48))
+            image = gray[q:q+s, p:p+r]
+            image = cv2.resize(image, (48, 48))
+            img = extract_features(image)
 
-            # Extract features and predict emotion
-            img_features = extract_features(face_image)
-            pred = model.predict(img_features)
-            prediction_label = labels[pred.argmax()]
+            # Predict the emotion and confidence
+            pred = model.predict(img)
+            pred_label_index = pred.argmax()
+            prediction_label = labels[pred_label_index]
+            confidence = pred[0][pred_label_index] * 100  # Get the confidence percentage
 
-            # Draw a rectangle around the face and display the predicted emotion
-            cv2.rectangle(img, (p, q), (p + r, q + s), (255, 0, 0), 2)
-            cv2.putText(img, prediction_label, (p - 10, q - 10), cv2.FONT_HERSHEY_COMPLEX_SMALL, 2, (0, 0, 255))
+            # Set color and display label with confidence percentage
+            color = colors[prediction_label]
+            label_text = f"{prediction_label} ({confidence:.2f}%)"
 
-        return img
+            # Draw rectangle (box) with the same color as the predicted emotion
+            cv2.rectangle(im, (p, q), (p+r, q+s), color, 2)
 
-# Streamlit app
-def main():
-    st.title("Real-Time Facial Emotion Detection with Streamlit and WebRTC")
+            # Display label on top-left of face rectangle with bold Arial-like font
+            cv2.putText(im, label_text, (p, q-10), cv2.FONT_HERSHEY_COMPLEX, 1.5, color, 4)
 
-    # Add a description
-    st.write("This app uses a pre-trained CNN model to detect facial emotions in real-time.")
-
-    # Start the WebRTC streamer
-    webrtc_streamer(
-        key="emotion-detection",
-        video_transformer_factory=EmotionDetectionTransformer,
-        async_transform=True,
-    )
-
-if __name__ == "__main__":
-    main()
+        cv2.imshow("Output", im)
+        cv2.waitKey(27)
+    except cv2.error:
+        pass
