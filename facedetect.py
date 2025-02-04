@@ -11,11 +11,11 @@ st.set_page_config(page_title="Emotion Detection", layout="wide")
 # Load model (do this only once)
 @st.cache_resource
 def load_model():
-    json_file = open('facialemotionmodel.json', 'r')
+    json_file = open('faceEmotionModel.json', 'r')
     model_json = json_file.read()
     json_file.close()
     model = model_from_json(model_json)
-    model.load_weights('facialemotionmodel.h5')
+    model.load_weights('faceEmotionModel.keras')
     return model
 
 # Load face classifier (do this only once)
