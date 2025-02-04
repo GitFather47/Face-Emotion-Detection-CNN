@@ -2,14 +2,13 @@ import cv2
 from keras.models import model_from_json
 import numpy as np
 import streamlit as st
-from PIL import Image
 
 # Load the model
-json_file = open("faceEmotionModel.json", "r")
+json_file = open("facialemotionmodel.json", "r")
 model_json = json_file.read()
 json_file.close()
 model = model_from_json(model_json)
-model.load_weights("faceEmotionModel.keras")
+model.load_weights("facialemotionmodel.h5")
 
 # Load the Haar cascade for face detection
 haar_file = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
@@ -33,8 +32,11 @@ webcam = cv2.VideoCapture(0)
 # Placeholder for the video frame
 frame_placeholder = st.empty()
 
+# Add a stop button to terminate the webcam feed
+stop_button = st.button("Stop")
+
 # Loop to capture video frames
-while True:
+while not stop_button:
     ret, frame = webcam.read()
     if not ret:
         st.error("Failed to capture video from webcam.")
@@ -44,7 +46,7 @@ while True:
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
     # Detect faces in the frame
-    faces = face_cascade.detectMultiScale(frame, 1.3, 5)
+    faces = face_cascade.detectMultiScale(gray, 1.3, 5)
 
     # Process each face detected
     for (p, q, r, s) in faces:
@@ -64,10 +66,6 @@ while True:
     # Display the frame in the Streamlit app
     frame_placeholder.image(frame, channels="BGR", use_column_width=True)
 
-    # Break the loop if 'q' is pressed
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
-
-# Release the webcam and close all OpenCV windows
+# Release the webcam when the stop button is pressed
 webcam.release()
-cv2.destroyAllWindows()
+st.write("Webcam stopped.")
