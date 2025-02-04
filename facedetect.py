@@ -1,74 +1,73 @@
 import cv2
+from keras.models import model_from_json
 import numpy as np
 import streamlit as st
-from keras.models import model_from_json
+from PIL import Image
 
-# Load the pre-trained model
-@st.cache_resource
-def load_model():
-    json_file = open("faceEmotionModel.json", "r")
-    model_json = json_file.read()
-    json_file.close()
-    model = model_from_json(model_json)
-    model.load_weights("faceEmotionModel.keras")
-    return model
+# Load the model
+json_file = open("facialemotionmodel.json", "r")
+model_json = json_file.read()
+json_file.close()
+model = model_from_json(model_json)
+model.load_weights("facialemotionmodel.h5")
 
-# Load Haar cascade for face detection
-@st.cache_resource
-def load_face_cascade():
-    haar_file = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
-    return cv2.CascadeClassifier(haar_file)
+# Load the Haar cascade for face detection
+haar_file = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
+face_cascade = cv2.CascadeClassifier(haar_file)
 
+# Function to extract features from the image
 def extract_features(image):
     feature = np.array(image)
     feature = feature.reshape(1, 48, 48, 1)
-    return feature/255.0
+    return feature / 255.0
 
-def main():
-    st.title("Facial Emotion Recognition")
-    
-    # Emotion labels
-    labels = {0: 'angry', 1: 'disgust', 2: 'fear', 3: 'happy', 
-              4: 'neutral', 5: 'sad', 6: 'surprise'}
-    
-    # Load model and face cascade
-    model = load_model()
-    face_cascade = load_face_cascade()
-    
-    # Webcam input
-    run = st.checkbox('Open Webcam')
-    FRAME_WINDOW = st.image([])
-    
-    if run:
-        webcam = cv2.VideoCapture(0)
-        
-        while run:
-            i, im = webcam.read()
-            if not i:
-                break
-            
-            gray = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)
-            faces = face_cascade.detectMultiScale(im, 1.3, 5)
-            
-            for (p, q, r, s) in faces:
-                image = gray[q:q+s, p:p+r]
-                cv2.rectangle(im, (p, q), (p+r, q+s), (255, 0, 0), 2)
-                
-                image = cv2.resize(image, (48, 48))
-                img = extract_features(image)
-                
-                pred = model.predict(img)
-                prediction_label = labels[pred.argmax()]
-                
-                cv2.putText(im, prediction_label, (p-10, q-10), 
-                            cv2.FONT_HERSHEY_COMPLEX_SMALL, 2, (0, 0, 255))
-            
-            # Convert BGR to RGB for Streamlit display
-            FRAME_WINDOW.image(cv2.cvtColor(im, cv2.COLOR_BGR2RGB))
-        
-        webcam.release()
-    else:
-        st.write('Stopped')
+# Emotion labels
+labels = {0: 'angry', 1: 'disgust', 2: 'fear', 3: 'happy', 4: 'neutral', 5: 'sad', 6: 'surprise'}
 
-if __name__ == "__main__":
-    main()
+# Streamlit app
+st.title("Real-Time Facial Emotion Detection")
+
+# Start the webcam
+webcam = cv2.VideoCapture(0)
+
+# Placeholder for the video frame
+frame_placeholder = st.empty()
+
+# Loop to capture video frames
+while True:
+    ret, frame = webcam.read()
+    if not ret:
+        st.error("Failed to capture video from webcam.")
+        break
+
+    # Convert the frame to grayscale
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+    # Detect faces in the frame
+    faces = face_cascade.detectMultiScale(frame, 1.3, 5)
+
+    # Process each face detected
+    for (p, q, r, s) in faces:
+        # Extract the face region
+        face_image = gray[q:q + s, p:p + r]
+        face_image = cv2.resize(face_image, (48, 48))
+
+        # Extract features and predict emotion
+        img = extract_features(face_image)
+        pred = model.predict(img)
+        prediction_label = labels[pred.argmax()]
+
+        # Draw a rectangle around the face and display the predicted emotion
+        cv2.rectangle(frame, (p, q), (p + r, q + s), (255, 0, 0), 2)
+        cv2.putText(frame, prediction_label, (p - 10, q - 10), cv2.FONT_HERSHEY_COMPLEX_SMALL, 2, (0, 0, 255))
+
+    # Display the frame in the Streamlit app
+    frame_placeholder.image(frame, channels="BGR", use_column_width=True)
+
+    # Break the loop if 'q' is pressed
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
+
+# Release the webcam and close all OpenCV windows
+webcam.release()
+cv2.destroyAllWindows()
